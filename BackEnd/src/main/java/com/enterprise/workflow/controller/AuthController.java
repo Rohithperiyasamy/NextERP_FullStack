@@ -30,7 +30,7 @@ public class AuthController {
             // check password matches
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body("Invalid password");
+                        .body("Invalid email or password");
             }
 
             // generate JWT token
@@ -110,7 +110,7 @@ public class AuthController {
         private String password;
         private String role; // "ADMIN", "MANAGER", "EMPLOYEE"
 
-        // getters and setters
+
 
     }
 }

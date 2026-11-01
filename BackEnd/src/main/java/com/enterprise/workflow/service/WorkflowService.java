@@ -22,10 +22,13 @@ public class WorkflowService {
     private final NotificationService notificationService;
 
     // ─── 1. SUBMIT WORKFLOW ───────────────────────────────────────────
-    public Workflow submitWorkflow(String title, String description,
-                                   String type, Long userId) {
+    public Workflow submitWorkflow(
+            String title,
+            String description,
+            String type,
+            String authenticatedEmail) {
 
-        User submitter = userRepository.findById(userId)
+        User submitter = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (submitter.getRole() != Role.EMPLOYEE) {
@@ -56,11 +59,11 @@ public class WorkflowService {
     }
 
     // ─── 2. START REVIEW ─────────────────────────────────────────────
-    public Workflow startReview(Long workflowId, Long managerId) {
+    public Workflow startReview(Long workflowId, String authenticatedEmail) {
 
         Workflow workflow = getWorkflowById(workflowId);
 
-        User manager = userRepository.findById(managerId)
+        User manager = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new RuntimeException("Manager not found"));
 
         if (manager.getRole() != Role.MANAGER) {
@@ -91,11 +94,11 @@ public class WorkflowService {
     }
 
     // ─── 3. APPROVE WORKFLOW ──────────────────────────────────────────
-    public Workflow approveWorkflow(Long workflowId, Long managerId) {
+    public Workflow approveWorkflow(Long workflowId, String authenticatedEmail) {
 
         Workflow workflow = getWorkflowById(workflowId);
 
-        User manager = userRepository.findById(managerId)
+        User manager = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new RuntimeException("Manager not found"));
 
         if (manager.getRole() != Role.MANAGER) {
@@ -131,11 +134,11 @@ public class WorkflowService {
     }
 
     // ─── 4. REJECT WORKFLOW ───────────────────────────────────────────
-    public Workflow rejectWorkflow(Long workflowId, Long managerId) {
+    public Workflow rejectWorkflow(Long workflowId, String authenticatedEmail) {
 
         Workflow workflow = getWorkflowById(workflowId);
 
-        User manager = userRepository.findById(managerId)
+        User manager = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new RuntimeException("Manager not found"));
 
         if (manager.getRole() != Role.MANAGER) {
@@ -171,11 +174,11 @@ public class WorkflowService {
     }
 
     // ─── 5. REQUEST MORE INFO ─────────────────────────────────────────
-    public Workflow requestMoreInfo(Long workflowId, Long managerId) {
+    public Workflow requestMoreInfo(Long workflowId, String authenticatedEmail) {
 
         Workflow workflow = getWorkflowById(workflowId);
 
-        User manager = userRepository.findById(managerId)
+        User manager = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new RuntimeException("Manager not found"));
 
         if (manager.getRole() != Role.MANAGER) {
@@ -211,33 +214,40 @@ public class WorkflowService {
     }
 
     // ─── 6. RESUBMIT WORKFLOW ─────────────────────────────────────────
-    public Workflow resubmitWorkflow(Long workflowId, Long userId, String updatedDescription) {
+    public Workflow resubmitWorkflow(
+            Long workflowId,
+            String authenticatedEmail,
+            String updatedDescription) {
 
         Workflow workflow = getWorkflowById(workflowId);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        User user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getRole() != Role.EMPLOYEE) {
             throw new RuntimeException("Only employees can resubmit workflows");
         }
-        if (workflow.getSubmittedBy() == null || !workflow.getSubmittedBy().getId().equals(userId)) {
-            throw new RuntimeException("You can only resubmit workflows you created");
+
+        if (workflow.getSubmittedBy() == null
+                || !workflow.getSubmittedBy().getId().equals(user.getId())) {
+            throw new RuntimeException(
+                    "You can only resubmit workflows you created");
         }
+
         if (updatedDescription == null || updatedDescription.isBlank()) {
-            throw new RuntimeException("Please provide the updated workflow description");
+            throw new RuntimeException(
+                    "Please provide the updated workflow description");
         }
 
         if (workflow.getStatus() != WorkflowStatus.NEEDS_MORE_INFO) {
             throw new RuntimeException(
-                    "Workflow must be NEEDS_MORE_INFO to resubmit. Current: "
-                            + workflow.getStatus()
-            );
+                    "Workflow must be NEEDS_MORE_INFO to resubmit");
         }
 
         workflow.setDescription(updatedDescription.trim());
         workflow.setStatus(WorkflowStatus.PENDING);
         workflow.setUpdatedAt(LocalDateTime.now());
+
         Workflow saved = workflowRepository.save(workflow);
 
         auditLogService.log(

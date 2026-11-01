@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,21 +19,22 @@ public class WorkflowController {
 
     private final WorkflowService workflowService;
 
+
     // ── POST /api/workflows/submit ─────────────────────────────────────
     // Employee submits a new workflow
     @PostMapping("/submit")
-    public ResponseEntity<?> submitWorkflow(@RequestBody SubmitRequest request) {
-        try {
-            Workflow workflow = workflowService.submitWorkflow(
-                    request.getTitle(),
-                    request.getDescription(),
-                    request.getType(),
-                    request.getUserId()
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(workflow);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<?> submitWorkflow(
+            @RequestBody SubmitRequest request,
+            Authentication authentication) {
+
+        Workflow workflow = workflowService.submitWorkflow(
+                request.getTitle(),
+                request.getDescription(),
+                request.getType(),
+                authentication.getName()
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(workflow);
     }
 
     // ── GET /api/workflows ─────────────────────────────────────────────
@@ -66,9 +68,9 @@ public class WorkflowController {
     // Manager starts reviewing
     @PutMapping("/{id}/review")
     public ResponseEntity<?> startReview(@PathVariable Long id,
-                                         @RequestParam Long managerId) {
+                                         Authentication authentication) {
         try {
-            return ResponseEntity.ok(workflowService.startReview(id, managerId));
+            return ResponseEntity.ok(workflowService.startReview(id, authentication.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -78,9 +80,9 @@ public class WorkflowController {
     // Manager approves
     @PutMapping("/{id}/approve")
     public ResponseEntity<?> approveWorkflow(@PathVariable Long id,
-                                             @RequestParam Long managerId) {
+                                             Authentication authentication) {
         try {
-            return ResponseEntity.ok(workflowService.approveWorkflow(id, managerId));
+            return ResponseEntity.ok(workflowService.approveWorkflow(id, authentication.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -90,9 +92,9 @@ public class WorkflowController {
     // Manager rejects
     @PutMapping("/{id}/reject")
     public ResponseEntity<?> rejectWorkflow(@PathVariable Long id,
-                                            @RequestParam Long managerId) {
+                                            Authentication authentication) {
         try {
-            return ResponseEntity.ok(workflowService.rejectWorkflow(id, managerId));
+            return ResponseEntity.ok(workflowService.rejectWorkflow(id, authentication.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -102,9 +104,9 @@ public class WorkflowController {
     // Manager requests more info
     @PutMapping("/{id}/more-info")
     public ResponseEntity<?> requestMoreInfo(@PathVariable Long id,
-                                             @RequestParam Long managerId) {
+                                             Authentication authentication) {
         try {
-            return ResponseEntity.ok(workflowService.requestMoreInfo(id, managerId));
+            return ResponseEntity.ok(workflowService.requestMoreInfo(id, authentication.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -113,11 +115,18 @@ public class WorkflowController {
 
     // Employee updates the description and resubmits a request that needs more information.
     @PutMapping("/{id}/resubmit")
-    public ResponseEntity<?> resubmitWorkflow(@PathVariable Long id,
-                                               @RequestBody ResubmitRequest request) {
+    public ResponseEntity<?> resubmitWorkflow(
+            @PathVariable Long id,
+            @RequestBody ResubmitRequest request,
+            Authentication authentication) {
         try {
-            return ResponseEntity.ok(workflowService.resubmitWorkflow(
-                    id, request.getUserId(), request.getDescription()));
+            return ResponseEntity.ok(
+                    workflowService.resubmitWorkflow(
+                            id,
+                            authentication.getName(),
+                            request.getDescription()
+                    )
+            );
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -125,17 +134,15 @@ public class WorkflowController {
 
     @Data
     public static class ResubmitRequest {
-        private Long userId;
         private String description;
     }
-
     // ── inner request class ────────────────────────────────────────────
    @Data
     public static class SubmitRequest {
         private String title;
         private String description;
         private String type;
-        private Long userId;
+
 
 
     }

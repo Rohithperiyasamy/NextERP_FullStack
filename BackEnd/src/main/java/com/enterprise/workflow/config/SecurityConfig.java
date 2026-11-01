@@ -15,6 +15,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 
 @Configuration
@@ -52,6 +54,11 @@ public class SecurityConfig {
                 )
                 .cors(cors ->
                         cors.configurationSource(corsConfigurationSource())
+                )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                        )
                 )
                 .addFilterBefore(jwtFilter,
                         UsernamePasswordAuthenticationFilter.class);

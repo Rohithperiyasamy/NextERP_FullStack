@@ -4,10 +4,12 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtUtil {
@@ -59,6 +61,22 @@ public class JwtUtil {
     }
 
     private Key getSignKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        return Keys.hmacShaKeyFor(
+                secret.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+    @PostConstruct
+    public void validateJwtConfiguration() {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must contain at least 32 bytes"
+            );
+        }
+
+        if (expiration == null || expiration <= 0) {
+            throw new IllegalStateException(
+                    "JWT expiration must be positive"
+            );
+        }
     }
 }
